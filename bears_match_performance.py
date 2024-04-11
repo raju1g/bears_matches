@@ -301,7 +301,7 @@ elif choice == "Bowling analysis":
                 axes[0].bar_label(bars)
                 axes[0].set_xlabel('Ball number')
                 axes[0].set_ylabel('')
-                axes[0].set_title(f'Bowling innings strike-rate')
+                axes[0].set_title(f'Bowling innings run-rate')
 
                 bars = axes[1].bar(avg_df['delivery'], round(avg_df['dots'], 1), color='lightgreen')
                 axes[1].bar_label(bars)
