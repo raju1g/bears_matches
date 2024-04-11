@@ -1,0 +1,7 @@
+# Configurations for Streamlit UI
+[theme]
+primaryColor = "#000cff"
+backgroundColor = "#e6fbff"
+secondaryBackgroundColor = "#ccf6ff"
+textColor = "#262730"
+font = "monospace"
