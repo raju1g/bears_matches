@@ -4,29 +4,20 @@ import json
 import os
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Bears Performance Analysis", page_icon=":cricket_game:", layout="wide")
+st.set_page_config(page_title="Bears Performance Analysis", page_icon="", layout="wide")
 
 col1, col2, col3 = st.columns([1.75, 1, 2])
 with col1:
-    # Intentionally left blank for spacing
     st.write("")
 
 with col2:
-    logo = 'images/bears_logo.png'  # Replace with the path to your logo
+    logo = 'images/bears_logo.png'
     st.image(logo, width=300)
 
 with col3:
-    # Intentionally left blank for spacing
     st.write("")
 
-DATA_DIR = 'data_finland'  # Update this path according to your directory structure
-
-
-# Function to load a match file
-def load_match(file_path):
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-    return data
+DATA_DIR = 'data_finland'
 
 
 def load_match(file_path):
@@ -47,13 +38,11 @@ def get_batters(selected_matches, selected_team):
     return list(batters)
 
 
-# Revised function to get unique bowlers for the selected team across selected matches
 def get_bowlers(selected_matches, selected_team):
     bowlers = set()
     for match_file in selected_matches:
         match_data = load_match(os.path.join(DATA_DIR, match_file))
         for innings in match_data['innings']:
-            # Get bowlers from the innings where the team is not the selected team
             if innings['team'] != selected_team:
                 for over in innings['overs']:
                     for delivery in over['deliveries']:
@@ -68,11 +57,93 @@ def get_over_range(over_selection):
         return 7, 15
     elif over_selection == 'Overs 16-20':
         return 16, 20
-    else:  # 'All'
-        return 1, 20  # Assuming T20 match for maximum overs
+    else:
+        return 1, 20
 
 
 choice = st.sidebar.selectbox("Choose analysis type: ", ["Batting analysis", "Bowling analysis"])
+match_outcome_selection = st.sidebar.selectbox("Match Outcome for Finland:", ["All", "won", "lost", "tied"], index=0)
+toss_outcome_selection = st.sidebar.selectbox("Toss Outcome for Finland:", ["All", "won", "lost"], index=0)
+venue_selection = st.sidebar.selectbox("Venue for Finland:", ["All", "Home", "Away"], index=0)
+
+
+def filter_matches_by_selection(matches, match_outcome, toss_outcome, venue):
+    filtered_matches = []
+    for match_file in matches:
+        match_data = load_match(os.path.join(DATA_DIR, match_file))
+
+        if match_outcome != "All":
+            if match_outcome == "won":
+                outcome_matches = match_data["info"]["outcome"].get("winner", "").lower() == "finland"
+            elif match_outcome == "lost":
+                outcome_matches = "finland" not in match_data["info"]["outcome"].get("winner", "")
+            elif match_outcome == "tied":
+                outcome_matches = match_data["info"].get("outcome", {}).get("result", "") == "tie"
+        else:
+            outcome_matches = True  # Ignore filter if "All"
+
+        if toss_outcome != "All":
+            toss_matches = (match_data["info"]["toss"]["winner"].lower() == "finland" if toss_outcome == "won"
+                            else match_data["info"]["toss"]["winner"].lower() != "finland")
+        else:
+            toss_matches = True  # Ignore filter if "All"
+
+        if venue != "All":
+            # Assuming 'Home' means Finland is listed first in "teams" and the venue city is in Finland
+            is_home_game = match_data["info"]["city"].lower() in ["vantaa", "kerava"]
+            venue_matches = (is_home_game if venue == "Home" else not is_home_game)
+        else:
+            venue_matches = True  # Ignore filter if "All"
+
+        if outcome_matches and toss_matches and venue_matches:
+            filtered_matches.append(match_file)
+
+    return filtered_matches
+
+
+def generate_match_summary_table(filtered_matches):
+    match_summaries = []
+
+    for match_file in filtered_matches:
+        match_data = load_match(os.path.join(DATA_DIR, match_file))
+        # Extracting necessary match info
+        match_date = match_data["info"]["dates"][0]
+        opponent = [team for team in match_data["info"]["teams"] if team.lower() != "finland"][0]
+
+        # Determine match outcome and details
+        if match_data["info"]["outcome"].get("winner", "").lower() == "finland":
+            match_outcome = "won"
+            if "runs" in match_data["info"]["outcome"]["by"]:
+                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["runs"]} runs'
+            elif "wickets" in match_data["info"]["outcome"]["by"]:
+                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["wickets"]} wickets'
+            else:
+                outcome_detail = "N/A"
+        elif "winner" in match_data["info"]["outcome"]:
+            match_outcome = "lost"
+            if "runs" in match_data["info"]["outcome"]["by"]:
+                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["runs"]} runs'
+            elif "wickets" in match_data["info"]["outcome"]["by"]:
+                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["wickets"]} wickets'
+            else:
+                outcome_detail = "N/A"
+        else:
+            match_outcome = "tied"
+            outcome_detail = "N/A"
+
+        toss_winner = match_data["info"]["toss"]["winner"]
+        toss_outcome = "won" if toss_winner.lower() == "finland" else "lost"
+        city = match_data["info"]["city"]
+        venue = "Home" if city.lower() in ["vantaa", "kerava"] else "Away"
+
+        match_summaries.append([match_date, opponent, match_outcome, outcome_detail, toss_outcome, venue])
+
+    # Creating a DataFrame
+    columns = ["Date", "Opponent", "Match Outcome", "Outcome Detail", "Toss Outcome", "Venue"]
+    match_summary_df = pd.DataFrame(match_summaries, columns=columns)
+
+    return match_summary_df
+
 
 if choice == "Batting analysis":
     def aggregate_info_batters(selected_matches, selected_deliveries, selected_team, selected_batters, over_selection):
@@ -120,32 +191,19 @@ if choice == "Batting analysis":
         df = pd.DataFrame(batter_data)
         return df.groupby('delivery').sum().reset_index()
 
-
-    # # UI Components
-    # title_html = """
-    #     <style>
-    #         .title {
-    #             font-family: "Arial", sans-serif;
-    #             font-size: 24px;
-    #             font-weight: bold;
-    #             color: black;  # Change to your desired color
-    #             text-align: justify;
-    #         }
-    #     </style>
-    #     <div class="title">Bears Batting Analysis</div>
-    # """
-    # st.markdown(title_html, unsafe_allow_html=True)
-    #st.title('Bears Batting Analysis')
     selected_team = 'Finland'
-    #st.write(f'Team {selected_team}')
 
     col11, col12 = st.columns([1, 1])
     with col11:
         matches = [file for file in os.listdir(DATA_DIR) if file.endswith('.json')]
-        selected_matches = st.multiselect('Select Match Files:', options=matches, default=matches)
+        selected_matches_user = filter_matches_by_selection(matches, match_outcome_selection, toss_outcome_selection,
+                                                       venue_selection)
+        selected_matches = st.multiselect('Select Match Files:', options=selected_matches_user, default=selected_matches_user)
+
     with col12:
         if selected_team and selected_matches:
-            batters = get_batters(selected_matches, selected_team)
+            # batters = get_batters(selected_matches, selected_team)
+            batters = get_batters(selected_matches, selected_team="Finland")
             selected_batters = st.multiselect('Select Batters:', options=batters, default=batters)
 
     col21, col22 = st.columns([1, 1])
@@ -159,7 +217,10 @@ if choice == "Batting analysis":
         selected_deliveries = st.multiselect('Select Deliveries:', options=list(range(1, 7)),
                                              format_func=lambda x: f"{x}th delivery")
 
-
+    filtered_matches = filter_matches_by_selection(matches, match_outcome_selection, toss_outcome_selection,
+                                                   venue_selection)
+    match_summary_table = generate_match_summary_table(filtered_matches)
+    st.table(match_summary_table)
     if st.button('Analyze Selected Deliveries for Batters'):
         if not selected_deliveries or not selected_matches or not selected_batters:
             st.error("Please select matches, deliveries, and batters.")
@@ -251,28 +312,23 @@ elif choice == "Bowling analysis":
             for column in avg_df.columns:
                 if column not in ['delivery', 'runs', 'wickets', 'dots', 'fours', 'sixes', 'balls_faced']:
                     avg_df[column] = avg_df[column] / total_deliveries
-            # st.table(avg_df)
         else:
-            avg_df = pd.DataFrame()  # Return an empty dataframe if no data was aggregated
-
-        # Return both the averaged DataFrame and the total runs DataFrame
+            avg_df = pd.DataFrame()
         return avg_df
 
-
-    # Streamlit UI Components
-    # st.title('Bears Bowling Analysis')
-
-    selected_team = 'Finland'  # This could be dynamically generated
-    #st.write(f'Team {selected_team}')
+    selected_team = 'Finland'
 
     row11, row12 = st.columns([1, 1])
     with row11:
-        matches = os.listdir(DATA_DIR)
-        selected_matches = st.multiselect('Select Match Files:', options=matches, default=matches)
+        matches = [file for file in os.listdir(DATA_DIR) if file.endswith('.json')]
+        selected_matches_user = filter_matches_by_selection(matches, match_outcome_selection, toss_outcome_selection,
+                                                            venue_selection)
+        selected_matches = st.multiselect('Select Match Files:', options=selected_matches_user,
+                                          default=selected_matches_user)
 
     with row12:
         if selected_team and selected_matches:
-            bowlers = get_bowlers(selected_matches, selected_team)
+            bowlers = get_bowlers(selected_matches, selected_team="Finland")
             selected_bowlers = st.multiselect('Select Bowlers:', options=bowlers, default=bowlers)
 
     row21, row22 = st.columns([1, 1])
@@ -280,12 +336,16 @@ elif choice == "Bowling analysis":
         over_selection = st.selectbox(
             'Select Over Range:',
             options=['All', 'Overs 1-6', 'Overs 7-15', 'Overs 16-20'],
-            index=0  # Default selection is 'All'
+            index=0
         )
     with row22:
         selected_deliveries = st.multiselect('Select Deliveries:', options=list(range(1, 7)),
                                              format_func=lambda x: f"{x}th delivery")
 
+    filtered_matches = filter_matches_by_selection(matches, match_outcome_selection, toss_outcome_selection,
+                                                   venue_selection)
+    match_summary_table = generate_match_summary_table(filtered_matches)
+    st.table(match_summary_table)
     if st.button('Analyze Selected Deliveries for Team and Bowlers'):
         if not selected_deliveries or not selected_matches or not selected_team or not selected_bowlers:
             st.error("Please select matches, deliveries, a team, and bowlers.")
@@ -301,7 +361,7 @@ elif choice == "Bowling analysis":
                 axes[0].bar_label(bars)
                 axes[0].set_xlabel('Ball number')
                 axes[0].set_ylabel('')
-                axes[0].set_title(f'Opposition strike-rate')
+                axes[0].set_title(f'Bowling innings strike-rate')
 
                 bars = axes[1].bar(avg_df['delivery'], round(avg_df['dots'], 1), color='lightgreen')
                 axes[1].bar_label(bars)
@@ -327,7 +387,6 @@ elif choice == "Bowling analysis":
                 axes[4].set_ylabel('')
                 axes[4].set_title(f'Wickets taken')
 
-                # plt.tight_layout()
                 st.pyplot(fig)
 
             else:
