@@ -62,9 +62,9 @@ def get_over_range(over_selection):
 
 
 choice = st.sidebar.selectbox("Choose analysis type: ", ["Batting analysis", "Bowling analysis"])
-match_outcome_selection = st.sidebar.selectbox("Match Outcome for Finland:", ["All", "won", "lost", "tied"], index=0)
-toss_outcome_selection = st.sidebar.selectbox("Toss Outcome for Finland:", ["All", "won", "lost"], index=0)
-venue_selection = st.sidebar.selectbox("Venue for Finland:", ["All", "Home", "Away"], index=0)
+match_outcome_selection = st.sidebar.selectbox("Match Outcome:", ["All", "won", "lost", "tied"], index=0)
+toss_outcome_selection = st.sidebar.selectbox("Toss Outcome:", ["All", "won", "lost"], index=0)
+venue_selection = st.sidebar.selectbox("Venue:", ["All", "Home", "Away"], index=0)
 
 
 def filter_matches_by_selection(matches, match_outcome, toss_outcome, venue):
