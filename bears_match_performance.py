@@ -113,20 +113,14 @@ def generate_match_summary_table(filtered_matches):
         # Determine match outcome and details
         if match_data["info"]["outcome"].get("winner", "").lower() == "finland":
             match_outcome = "won"
-            if "runs" in match_data["info"]["outcome"]["by"]:
-                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["runs"]} runs'
-            elif "wickets" in match_data["info"]["outcome"]["by"]:
-                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["wickets"]} wickets'
-            else:
-                outcome_detail = "N/A"
+            outcome_detail = f'by {match_data["info"]["outcome"]["by"].get("runs", "N/A")} runs' if "runs" in match_data["info"]["outcome"].get("by", {}) \
+                else f'by {match_data["info"]["outcome"]["by"].get("wickets", "N/A")} wickets' if "wickets" in match_data["info"]["outcome"].get("by", {}) \
+                else "N/A"
         elif "winner" in match_data["info"]["outcome"]:
             match_outcome = "lost"
-            if "runs" in match_data["info"]["outcome"]["by"]:
-                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["runs"]} runs'
-            elif "wickets" in match_data["info"]["outcome"]["by"]:
-                outcome_detail = f'by {match_data["info"]["outcome"]["by"]["wickets"]} wickets'
-            else:
-                outcome_detail = "N/A"
+            outcome_detail = f'by {match_data["info"]["outcome"]["by"].get("runs", "N/A")} runs' if "runs" in match_data["info"]["outcome"].get("by", {}) \
+                else f'by {match_data["info"]["outcome"]["by"].get("wickets", "N/A")} wickets' if "wickets" in match_data["info"]["outcome"].get("by", {}) \
+                else "N/A"
         else:
             match_outcome = "tied"
             outcome_detail = "N/A"
@@ -136,10 +130,11 @@ def generate_match_summary_table(filtered_matches):
         city = match_data["info"]["city"]
         venue = "Home" if city.lower() in ["vantaa", "kerava"] else "Away"
 
-        match_summaries.append([match_date, opponent, match_outcome, outcome_detail, toss_outcome, venue])
+        # Adding the filename to the summary
+        match_summaries.append([match_date, opponent, match_outcome, outcome_detail, toss_outcome, venue, match_file])
 
-    # Creating a DataFrame
-    columns = ["Date", "Opponent", "Match Outcome", "Outcome Detail", "Toss Outcome", "Venue"]
+    # Creating a DataFrame with an additional 'Filename' column
+    columns = ["Date", "Opponent", "Match Outcome", "Outcome Detail", "Toss Outcome", "Venue", "Filename"]
     match_summary_df = pd.DataFrame(match_summaries, columns=columns)
 
     return match_summary_df
