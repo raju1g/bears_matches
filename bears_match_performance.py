@@ -72,24 +72,24 @@ def filter_matches_by_selection(matches, match_outcome, toss_outcome, venue):
     for match_file in matches:
         match_data = load_match(os.path.join(DATA_DIR, match_file))
 
+        # Handling Match Outcome
         if match_outcome != "All":
-            if match_outcome == "won":
-                outcome_matches = match_data["info"]["outcome"].get("winner", "").lower() == "finland"
-            elif match_outcome == "lost":
-                outcome_matches = "finland" not in match_data["info"]["outcome"].get("winner", "")
-            elif match_outcome == "tied":
-                outcome_matches = match_data["info"].get("outcome", {}).get("result", "") == "tie"
+            outcome_matches = match_data["info"]["outcome"].get("winner", "").lower() == "finland" if match_outcome == "won" \
+                else "finland" not in match_data["info"]["outcome"].get("winner", "").lower() if match_outcome == "lost" \
+                else match_data["info"].get("outcome", {}).get("result", "") == "tie" if match_outcome == "tied" \
+                else False
         else:
             outcome_matches = True  # Ignore filter if "All"
 
+        # Handling Toss Outcome
         if toss_outcome != "All":
             toss_matches = (match_data["info"]["toss"]["winner"].lower() == "finland" if toss_outcome == "won"
                             else match_data["info"]["toss"]["winner"].lower() != "finland")
         else:
             toss_matches = True  # Ignore filter if "All"
 
+        # Handling Venue
         if venue != "All":
-            # Assuming 'Home' means Finland is listed first in "teams" and the venue city is in Finland
             is_home_game = match_data["info"]["city"].lower() in ["vantaa", "kerava"]
             venue_matches = (is_home_game if venue == "Home" else not is_home_game)
         else:
